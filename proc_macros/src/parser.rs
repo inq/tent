@@ -6,7 +6,7 @@ pub enum Node {
     Ident(String),
     Punct(char),
     Literal(String),
-    NotImplemented,
+    Group(String),
 }
 
 #[derive(Default)]
@@ -35,7 +35,7 @@ impl LineBuilder {
             TokenTree::Ident(ident) => Node::Ident(ident.to_string()),
             TokenTree::Punct(punct) => Node::Punct(punct.as_char()),
             TokenTree::Literal(literal) => Node::Literal(literal.to_string()),
-            TokenTree::Group(_) => Node::NotImplemented,
+            TokenTree::Group(group) => Node::Group(group.to_string()),
         };
         self.nodes.push(node);
         self.column = Some(span.end().column);
@@ -78,9 +78,9 @@ impl Line {
                     // TODO: Implement more
                     contents.push(literal);
                 }
-                (State::HasIdent, Node::NotImplemented) => {
+                (State::HasIdent, Node::Group(group)) => {
                     // TODO: Implement
-                    contents.push(String::from("\"\""))
+                    contents.push(group);
                 }
                 (State::NeedClassName, Node::Ident(ident)) => {
                     class_names.push(ident);
