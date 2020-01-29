@@ -54,12 +54,15 @@ impl Line {
         enum State {
             StandBy,
             HasIdent,
+            HasPropertyName(String),
+            NeedPropertyValue(String),
             NeedClassName,
         };
         let mut state = State::StandBy;
         let mut tag = None;
         let mut contents = vec![];
         let mut class_names = vec![];
+        let mut properties: Vec<(String, String)> = vec![];
 
         for node in self.nodes.into_iter() {
             match (&state, node) {
@@ -73,6 +76,17 @@ impl Line {
                 }
                 (State::HasIdent, Node::Punct('.')) => {
                     state = State::NeedClassName;
+                }
+                (State::HasIdent, Node::Ident(ident)) => {
+                    // Receive property name
+                    state = State::HasPropertyName(ident);
+                }
+                (State::HasPropertyName(name), Node::Punct('=')) => {
+                    state = State::NeedPropertyValue(name.to_string());
+                }
+                (State::NeedPropertyValue(name), Node::Literal(ref literal)) => {
+                    properties.push((name.to_string(), literal.to_string()));
+                    state = State::HasIdent;
                 }
                 (State::HasIdent, Node::Literal(literal)) => {
                     // TODO: Implement more
@@ -95,6 +109,7 @@ impl Line {
             level: self.level,
             tag: tag?,
             class_names,
+            properties,
             contents,
             children: vec![],
         })
@@ -111,6 +126,7 @@ pub struct BuilderNode {
     level: usize,
     tag: String,
     class_names: Vec<String>,
+    properties: Vec<(String, String)>,
     contents: Vec<String>, // TODO: Use enum
     children: Vec<Content>,
 }
@@ -125,6 +141,7 @@ impl BuilderNode {
         Content::Element {
             name: self.tag,
             class_names: self.class_names,
+            properties: self.properties,
             contents,
         }
     }

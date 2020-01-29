@@ -5,6 +5,7 @@ pub enum Content {
     Element {
         name: String,
         class_names: Vec<String>,
+        properties: Vec<(String, String)>,
         contents: Vec<Content>,
     },
     Text(String),
@@ -16,13 +17,19 @@ impl fmt::Display for Content {
             Content::Element {
                 name,
                 class_names,
+                properties,
                 contents,
             } => {
                 if class_names.is_empty() {
-                    write!(f, "<{}>", name)?;
+                    write!(f, "<{}", name)?;
                 } else {
-                    write!(f, "<{} class=\"{}\">", name, class_names.join(" "))?;
+                    write!(f, "<{} class=\"{}\"", name, class_names.join(" "))?;
                 }
+                for (name, value) in properties {
+                    write!(f, " {}=\"{}\"", name, value)?;
+                }
+                // TODO: Implement empty tag
+                write!(f, ">")?;
                 for content in contents.iter() {
                     content.fmt(f)?;
                 }
@@ -34,10 +41,16 @@ impl fmt::Display for Content {
 }
 
 impl Content {
-    pub fn new_element(name: String, class_names: Vec<String>, contents: Vec<Content>) -> Self {
+    pub fn new_element(
+        name: String,
+        class_names: Vec<String>,
+        properties: Vec<(String, String)>,
+        contents: Vec<Content>,
+    ) -> Self {
         Self::Element {
             name,
             class_names,
+            properties,
             contents,
         }
     }
