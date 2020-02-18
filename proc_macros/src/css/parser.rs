@@ -1,4 +1,4 @@
-use crate::content::Content;
+use crate::css::{Content, Item};
 use proc_macro::{token_stream, TokenTree};
 
 #[derive(Debug)]
@@ -53,66 +53,82 @@ impl Line {
         #[derive(Debug)]
         enum State {
             StandBy,
-            HasIdent,
-            HasPropertyName(String),
-            NeedPropertyValue(String),
-            NeedClassName,
+            HasIdent(String),
+            HasAccumulatedIdent(String),
+            HasAccumulatedPunct(String),
+            NeedDeclarationValue(String),
+            Done,
         };
         let mut state = State::StandBy;
-        let mut tag = None;
-        let mut contents = vec![];
-        let mut class_names = vec![];
-        let mut properties: Vec<(String, String)> = vec![];
+        let mut res = None;
 
         for node in self.nodes.into_iter() {
             match (&state, node) {
                 (State::StandBy, Node::Ident(ident)) => {
-                    tag = Some(ident);
-                    state = State::HasIdent;
+                    state = State::HasIdent(ident);
                 }
                 (State::StandBy, Node::Punct('.')) => {
-                    tag = Some(String::from("div"));
-                    state = State::NeedClassName;
+                    state = State::HasAccumulatedPunct(format!("."))
                 }
-                (State::HasIdent, Node::Punct('.')) => {
-                    state = State::NeedClassName;
+                (State::HasIdent(ident), Node::Punct('.')) => {
+                    state = State::HasAccumulatedPunct(format!("{} .", ident))
                 }
-                (State::HasIdent, Node::Ident(ident)) => {
-                    // Receive property name
-                    state = State::HasPropertyName(ident);
+                (State::HasIdent(ident), Node::Punct(':')) => {
+                    // Declaration
+                    state = State::NeedDeclarationValue(ident.to_string())
                 }
-                (State::HasPropertyName(name), Node::Punct('=')) => {
-                    state = State::NeedPropertyValue(name.to_string());
+                (State::NeedDeclarationValue(ident), Node::Literal(ref literal)) => {
+                    res = Some(Item::Declaration(ident.to_string(), literal.to_string()));
+                    state = State::Done;
                 }
-                (State::NeedPropertyValue(name), Node::Literal(ref literal)) => {
-                    properties.push((name.to_string(), literal.to_string()));
-                    state = State::HasIdent;
+                (State::HasIdent(prev), Node::Ident(ref ident)) => {
+                    state = State::HasAccumulatedIdent(format!("{} {}", prev, ident))
                 }
-                (State::HasIdent, Node::Literal(literal)) => {
-                    // TODO: Implement more
-                    contents.push(literal);
+                (State::HasAccumulatedIdent(prev), Node::Ident(ref ident)) => {
+                    state = State::HasAccumulatedIdent(format!("{} {}", prev, ident))
                 }
-                (State::HasIdent, Node::Group(group)) => {
-                    // TODO: Implement
-                    contents.push(group);
+                (State::HasAccumulatedPunct(prev), Node::Ident(ref ident)) => {
+                    state = State::HasAccumulatedIdent(format!("{}{}", prev, ident))
                 }
-                (State::NeedClassName, Node::Ident(ident)) => {
-                    class_names.push(ident);
-                    state = State::HasIdent;
+                (State::HasAccumulatedIdent(prev), Node::Punct(ref ident)) => {
+                    state = State::HasAccumulatedPunct(format!("{} {}", prev, ident))
+                }
+                (State::HasAccumulatedPunct(prev), Node::Punct(ref ident)) => {
+                    state = State::HasAccumulatedPunct(format!("{}{}", prev, ident))
                 }
                 (state, node) => {
                     panic!("{:?}, {:?}", state, node);
                 }
             }
         }
-        Some(BuilderNode {
-            level: self.level,
-            tag: tag?,
-            class_names,
-            properties,
-            contents,
-            children: vec![],
-        })
+
+        match state {
+            State::HasIdent(ident) => {
+                res = Some(Item::Node {
+                    name: ident.to_string(),
+                    children: vec![],
+                });
+            }
+            State::HasAccumulatedIdent(ident) => {
+                res = Some(Item::Node {
+                    name: ident.to_string(),
+                    children: vec![],
+                });
+            }
+            State::Done => (),
+            state => {
+                panic!("{:?}", state);
+            }
+        }
+
+        if let Some(res) = res {
+            Some(BuilderNode {
+                level: self.level,
+                inner: res,
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -124,31 +140,19 @@ pub struct Parser {
 #[derive(Debug)]
 pub struct BuilderNode {
     level: usize,
-    tag: String,
-    class_names: Vec<String>,
-    properties: Vec<(String, String)>,
-    contents: Vec<String>, // TODO: Use enum
-    children: Vec<Content>,
+    inner: Item,
 }
 
 impl BuilderNode {
-    pub fn into_element(self) -> Content {
-        let contents = if !self.contents.is_empty() {
-            self.contents.into_iter().map(Content::Text).collect()
-        } else {
-            self.children
-        };
-        Content::Element {
-            name: self.tag,
-            class_names: self.class_names,
-            properties: self.properties,
-            contents,
+    pub fn set_children(&mut self, children_new: Vec<Item>) {
+        match &mut self.inner {
+            Item::Node {
+                ref mut children, ..
+            } => {
+                *children = children_new;
+            }
+            etc => panic!("{:?}", etc),
         }
-    }
-
-    pub fn set_children(&mut self, children: Vec<Content>) {
-        assert!(self.contents.is_empty(), "{:?}", self.contents);
-        self.children = children;
     }
 }
 
@@ -171,19 +175,17 @@ impl Parser {
         Some(Self { lines })
     }
 
-    fn clean_stack(stack: &mut Vec<BuilderNode>) {
+    fn clean_stack(stack: &mut Vec<BuilderNode>) -> Vec<Item> {
         let leaf_level = stack.last().unwrap().level;
         let mut leaves = vec![];
-        while stack.last().unwrap().level == leaf_level {
-            leaves.push(stack.pop().unwrap().into_element());
+        while !stack.is_empty() && stack.last().unwrap().level == leaf_level {
+            leaves.push(stack.pop().unwrap().inner);
         }
         leaves.reverse();
-
-        let parent = stack.last_mut().unwrap();
-        parent.set_children(leaves);
+        leaves
     }
 
-    pub fn build(self) -> Option<Content> {
+    pub fn build(self) -> Content {
         #[derive(Debug)]
         enum State {
             BackIndent,
@@ -193,8 +195,10 @@ impl Parser {
         }
 
         let mut stack: Vec<BuilderNode> = vec![];
+        let mut res = vec![];
+
         for line in self.lines.into_iter() {
-            let node = line.process()?;
+            let node = line.process().unwrap();
 
             loop {
                 let state = if let Some(last) = stack.last() {
@@ -209,7 +213,13 @@ impl Parser {
                 };
                 match state {
                     State::BackIndent => {
-                        Self::clean_stack(&mut stack);
+                        let mut siblings = Self::clean_stack(&mut stack);
+                        if stack.is_empty() {
+                            res.append(&mut siblings);
+                        } else {
+                            let parent = stack.last_mut().unwrap();
+                            parent.set_children(siblings);
+                        }
                     }
                     State::Empty | State::Indent | State::Sibling => {
                         stack.push(node);
@@ -218,9 +228,15 @@ impl Parser {
                 }
             }
         }
-        while stack.len() > 1 {
-            Self::clean_stack(&mut stack);
+        while stack.len() > 0 {
+            let mut siblings = Self::clean_stack(&mut stack);
+            if stack.is_empty() {
+                res.append(&mut siblings);
+            } else {
+                let parent = stack.last_mut().unwrap();
+                parent.set_children(siblings);
+            }
         }
-        Some(stack.pop().unwrap().into_element())
+        Content { items: res }
     }
 }

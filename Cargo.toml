@@ -12,3 +12,6 @@ version = "0"
 
 [workspace]
 members = [".", "proc_macros"]
+
+[dev-dependencies]
+failure = "*"

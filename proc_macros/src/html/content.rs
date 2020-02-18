@@ -22,7 +22,7 @@ impl fmt::Display for Content {
             } => {
                 write!(
                     f,
-                    "tent::Content::Element {{ name: \"{}\".to_string(), ",
+                    "tent::HtmlContent::Element {{ name: \"{}\".to_string(), ",
                     name
                 )?;
                 write!(f, "class_names: vec![")?;
@@ -41,7 +41,7 @@ impl fmt::Display for Content {
                 }
                 write!(f, "] }}")
             }
-            Content::Text(text) => write!(f, "tent::Content::Text({}.to_string())", text),
+            Content::Text(text) => write!(f, "tent::HtmlContent::Text({}.to_string())", text),
         }
     }
 }
