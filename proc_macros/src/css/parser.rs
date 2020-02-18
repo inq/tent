@@ -68,7 +68,7 @@ impl Line {
                     state = State::HasIdent(ident);
                 }
                 (State::StandBy, Node::Punct('.')) => {
-                    state = State::HasAccumulatedPunct(format!("."))
+                    state = State::HasAccumulatedPunct(".".to_string())
                 }
                 (State::HasIdent(ident), Node::Punct('.')) => {
                     state = State::HasAccumulatedPunct(format!("{} .", ident))
@@ -105,13 +105,13 @@ impl Line {
         match state {
             State::HasIdent(ident) => {
                 res = Some(Item::Node {
-                    name: ident.to_string(),
+                    name: ident,
                     children: vec![],
                 });
             }
             State::HasAccumulatedIdent(ident) => {
                 res = Some(Item::Node {
-                    name: ident.to_string(),
+                    name: ident,
                     children: vec![],
                 });
             }
@@ -228,7 +228,7 @@ impl Parser {
                 }
             }
         }
-        while stack.len() > 0 {
+        while !stack.is_empty() {
             let mut siblings = Self::clean_stack(&mut stack);
             if stack.is_empty() {
                 res.append(&mut siblings);

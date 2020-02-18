@@ -13,7 +13,7 @@ impl Item {
                 let my_name = if let Some(namespace) = namespace {
                     format!("{} {}", namespace, name)
                 } else {
-                    format!("{}", name)
+                    name
                 };
 
                 let mut declarations = vec![];
