@@ -2,7 +2,7 @@
 name = "tent_proc_macros"
 description = "Procedure macros for tent"
 license = "AGPL-3.0"
-version = "0.0.1"
+version = "0.0.3"
 authors = ["inkyu <gofiri@gmail.com>"]
 edition = "2018"
 

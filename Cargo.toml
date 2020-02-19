@@ -2,7 +2,7 @@
 name = "tent"
 description = "A lightweight XML template engine"
 license = "MIT"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["inkyu <gofiri@gmail.com>"]
 edition = "2018"
 
@@ -14,4 +14,4 @@ version = "0"
 members = [".", "proc_macros"]
 
 [dev-dependencies]
-failure = "*"
+failure = "0.1"
