@@ -57,6 +57,7 @@ impl Line {
             HasPropertyName(String),
             NeedPropertyValue(String),
             NeedClassName,
+            Done(BuilderNode),
         };
         let mut state = State::StandBy;
         let mut tag = None;
@@ -69,6 +70,18 @@ impl Line {
                 (State::StandBy, Node::Ident(ident)) => {
                     tag = Some(ident);
                     state = State::HasIdent;
+                }
+                (State::StandBy, Node::Literal(ref literal)) => {
+                    state = State::Done(BuilderNode::Text {
+                        level: self.level,
+                        text: literal.to_string(),
+                    });
+                }
+                (State::StandBy, Node::Group(ref group)) => {
+                    state = State::Done(BuilderNode::Text {
+                        level: self.level,
+                        text: group.to_string(),
+                    });
                 }
                 (State::StandBy, Node::Punct('.')) => {
                     tag = Some(String::from("div"));
@@ -105,14 +118,27 @@ impl Line {
                 }
             }
         }
-        Some(BuilderNode {
-            level: self.level,
-            tag: tag?,
-            class_names,
-            properties,
-            contents,
-            children: vec![],
-        })
+        if let State::Done(res) = state {
+            Some(res)
+        } else {
+            if contents.is_empty() {
+                Some(BuilderNode::Tag {
+                    level: self.level,
+                    tag: tag?,
+                    class_names,
+                    properties,
+                    children: vec![],
+                })
+            } else {
+                Some(BuilderNode::InlineTag {
+                    level: self.level,
+                    tag: tag?,
+                    class_names,
+                    properties,
+                    contents,
+                })
+            }
+        }
     }
 }
 
@@ -122,33 +148,75 @@ pub struct Parser {
 }
 
 #[derive(Debug)]
-pub struct BuilderNode {
-    level: usize,
-    tag: String,
-    class_names: Vec<String>,
-    properties: Vec<(String, String)>,
-    contents: Vec<String>, // TODO: Use enum
-    children: Vec<Content>,
+pub enum BuilderNode {
+    InlineTag {
+        level: usize,
+        tag: String,
+        class_names: Vec<String>,
+        properties: Vec<(String, String)>,
+        contents: Vec<String>, // TODO: Use enum
+    },
+    Tag {
+        level: usize,
+        tag: String,
+        class_names: Vec<String>,
+        properties: Vec<(String, String)>,
+        children: Vec<Content>,
+    },
+    Text {
+        level: usize,
+        text: String,
+    },
 }
 
 impl BuilderNode {
-    pub fn into_element(self) -> Content {
-        let contents = if !self.contents.is_empty() {
-            self.contents.into_iter().map(Content::Text).collect()
-        } else {
-            self.children
-        };
-        Content::Element {
-            name: self.tag,
-            class_names: self.class_names,
-            properties: self.properties,
-            contents,
+    fn level(&self) -> usize {
+        match self {
+            Self::InlineTag { level, .. } => *level,
+            Self::Tag { level, .. } => *level,
+            Self::Text { level, .. } => *level,
         }
     }
 
-    pub fn set_children(&mut self, children: Vec<Content>) {
-        assert!(self.contents.is_empty(), "{:?}", self.contents);
-        self.children = children;
+    pub fn into_element(self) -> Content {
+        match self {
+            Self::InlineTag {
+                tag,
+                class_names,
+                properties,
+                contents,
+                ..
+            } => Content::Element {
+                name: tag,
+                class_names,
+                properties,
+                contents: contents.into_iter().map(Content::Text).collect(),
+            },
+            Self::Tag {
+                tag,
+                class_names,
+                properties,
+                children,
+                ..
+            } => Content::Element {
+                name: tag,
+                class_names,
+                properties,
+                contents: children,
+            },
+            Self::Text { text, .. } => Content::Text(text),
+        }
+    }
+
+    pub fn set_children(&mut self, new_children: Vec<Content>) {
+        if let Self::Tag {
+            ref mut children, ..
+        } = self
+        {
+            *children = new_children;
+        } else {
+            panic!("Unreachable");
+        }
     }
 }
 
@@ -172,9 +240,9 @@ impl Parser {
     }
 
     fn clean_stack(stack: &mut Vec<BuilderNode>) {
-        let leaf_level = stack.last().unwrap().level;
+        let leaf_level = stack.last().unwrap().level();
         let mut leaves = vec![];
-        while stack.last().unwrap().level == leaf_level {
+        while stack.last().unwrap().level() == leaf_level {
             leaves.push(stack.pop().unwrap().into_element());
         }
         leaves.reverse();
@@ -199,7 +267,7 @@ impl Parser {
             loop {
                 let state = if let Some(last) = stack.last() {
                     use std::cmp::Ordering;
-                    match node.level.cmp(&last.level) {
+                    match node.level().cmp(&last.level()) {
                         Ordering::Greater => State::Indent,
                         Ordering::Less => State::BackIndent,
                         Ordering::Equal => State::Sibling,
