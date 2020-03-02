@@ -29,3 +29,18 @@ fn test_text_node() -> Result<(), failure::Error> {
     );
     Ok(())
 }
+
+#[test]
+fn test_svg_node() -> Result<(), failure::Error> {
+    assert_eq!(
+        tent::html!(
+            html
+                body
+                    span.hello dataTest="test-data" "HELLO!"
+                    svg version="1.1" viewBox="0 0 1 1"
+                        path d=""
+        ).to_string(),
+        "<html><body><span class=\"hello\" data-test=\"test-data\">HELLO!</span><svg version=\"1.1\" viewBox=\"0 0 1 1\"><path d=\"\"></path></svg></body></html>".to_string()
+    );
+    Ok(())
+}

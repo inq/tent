@@ -49,6 +49,23 @@ pub struct Line {
 }
 
 impl Line {
+    fn to_dashed(property_name: &str) -> String {
+        if property_name == "viewBox" {
+            property_name.to_string()
+        } else {
+            let mut res = String::with_capacity(property_name.len() * 2);
+            for character in property_name.chars() {
+                if character.is_uppercase() {
+                    res.push('-');
+                    res.push_str(&character.to_lowercase().to_string());
+                } else {
+                    res.push(character);
+                }
+            }
+            res
+        }
+    }
+
     pub fn process(self) -> Option<BuilderNode> {
         #[derive(Debug)]
         enum State {
@@ -92,7 +109,7 @@ impl Line {
                 }
                 (State::HasIdent, Node::Ident(ident)) => {
                     // Receive property name
-                    state = State::HasPropertyName(ident);
+                    state = State::HasPropertyName(Self::to_dashed(&ident));
                 }
                 (State::HasPropertyName(name), Node::Punct('=')) => {
                     state = State::NeedPropertyValue(name.to_string());
