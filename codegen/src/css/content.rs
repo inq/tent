@@ -47,25 +47,11 @@ impl fmt::Display for Item {
                 }
                 write!(f, "] }}")
             }
-            Item::Declaration(key, value) => {
-                let dashed = key
-                    .chars()
-                    .map(|mut c| {
-                        if c.is_ascii_uppercase() {
-                            c.make_ascii_lowercase();
-                            format!("-{}", c)
-                        } else {
-                            format!("{}", c)
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join("");
-                write!(
-                    f,
-                    "tent::CssItem::Declaration(\"{}\".to_string(), {}.to_string())",
-                    dashed, value
-                )
-            }
+            Item::Declaration(key, value) => write!(
+                f,
+                "tent::CssItem::Declaration(\"{}\".to_string(), {}.to_string())",
+                key, value
+            ),
         }
     }
 }

@@ -49,20 +49,11 @@ pub struct Line {
 }
 
 impl Line {
-    fn to_dashed(property_name: &str) -> String {
+    fn property_name_to_dashed(property_name: &str) -> String {
         if property_name == "viewBox" {
             property_name.to_string()
         } else {
-            let mut res = String::with_capacity(property_name.len() * 2);
-            for character in property_name.chars() {
-                if character.is_uppercase() {
-                    res.push('-');
-                    res.push_str(&character.to_lowercase().to_string());
-                } else {
-                    res.push(character);
-                }
-            }
-            res
+            crate::util::camelcase_to_dashed(property_name)
         }
     }
 
@@ -109,7 +100,7 @@ impl Line {
                 }
                 (State::HasIdent, Node::Ident(ident)) => {
                     // Receive property name
-                    state = State::HasPropertyName(Self::to_dashed(&ident));
+                    state = State::HasPropertyName(Self::property_name_to_dashed(&ident));
                 }
                 (State::HasPropertyName(name), Node::Punct('=')) => {
                     state = State::NeedPropertyValue(name.to_string());
@@ -137,24 +128,22 @@ impl Line {
         }
         if let State::Done(res) = state {
             Some(res)
+        } else if contents.is_empty() {
+            Some(BuilderNode::Tag {
+                level: self.level,
+                tag: tag?,
+                class_names,
+                properties,
+                children: vec![],
+            })
         } else {
-            if contents.is_empty() {
-                Some(BuilderNode::Tag {
-                    level: self.level,
-                    tag: tag?,
-                    class_names,
-                    properties,
-                    children: vec![],
-                })
-            } else {
-                Some(BuilderNode::InlineTag {
-                    level: self.level,
-                    tag: tag?,
-                    class_names,
-                    properties,
-                    contents,
-                })
-            }
+            Some(BuilderNode::InlineTag {
+                level: self.level,
+                tag: tag?,
+                class_names,
+                properties,
+                contents,
+            })
         }
     }
 }

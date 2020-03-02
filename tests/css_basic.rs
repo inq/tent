@@ -29,3 +29,23 @@ fn test_simple() -> Result<(), failure::Error> {
     );
     Ok(())
 }
+
+#[test]
+fn test_font() -> Result<(), failure::Error> {
+    assert_eq!(
+        tent::css!(
+            @fontFace
+                fontFamily: "myfont"
+                src: "url('/assets/font.woff') format('woff')"
+        )
+        .to_string(),
+        vec![
+            "@font-face {",
+            "font-family: myfont;",
+            "src: url(\'/assets/font.woff\') format(\'woff\');",
+            "}",
+        ]
+        .join(""),
+    );
+    Ok(())
+}

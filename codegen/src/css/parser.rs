@@ -53,6 +53,7 @@ impl Line {
         #[derive(Debug)]
         enum State {
             StandBy,
+            HasPrefix(char),
             HasIdent(String),
             HasAccumulatedIdent(String),
             HasAccumulatedPunct(String),
@@ -64,11 +65,17 @@ impl Line {
 
         for node in self.nodes.into_iter() {
             match (&state, node) {
-                (State::StandBy, Node::Ident(ident)) => {
-                    state = State::HasIdent(ident);
-                }
+                (State::StandBy, Node::Punct('@')) => state = State::HasPrefix('@'),
+                (State::StandBy, Node::Ident(ident)) => state = State::HasIdent(ident),
                 (State::StandBy, Node::Punct('.')) => {
                     state = State::HasAccumulatedPunct(".".to_string())
+                }
+                (State::HasPrefix(prefix), Node::Ident(ref ident)) => {
+                    state = State::HasIdent(format!(
+                        "{}{}",
+                        prefix,
+                        crate::util::camelcase_to_dashed(ident)
+                    ))
                 }
                 (State::HasIdent(ident), Node::Punct('.')) => {
                     state = State::HasAccumulatedPunct(format!("{} .", ident))
@@ -77,8 +84,11 @@ impl Line {
                     // Declaration
                     state = State::NeedDeclarationValue(ident.to_string())
                 }
-                (State::NeedDeclarationValue(ident), Node::Literal(ref literal)) => {
-                    res = Some(Item::Declaration(ident.to_string(), literal.to_string()));
+                (State::NeedDeclarationValue(ref ident), Node::Literal(ref literal)) => {
+                    res = Some(Item::Declaration(
+                        crate::util::camelcase_to_dashed(ident),
+                        literal.to_string(),
+                    ));
                     state = State::Done;
                 }
                 (State::HasIdent(prev), Node::Ident(ref ident)) => {
