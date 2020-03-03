@@ -70,6 +70,9 @@ impl Line {
                 (State::StandBy, Node::Punct('.')) => {
                     state = State::HasAccumulatedPunct(".".to_string())
                 }
+                (State::StandBy, Node::Punct('#')) => {
+                    state = State::HasAccumulatedPunct("#".to_string())
+                }
                 (State::HasPrefix(prefix), Node::Ident(ref ident)) => {
                     state = State::HasIdent(format!(
                         "{}{}",

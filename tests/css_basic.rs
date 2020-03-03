@@ -6,6 +6,8 @@ fn test_simple() -> Result<(), failure::Error> {
         tent::css!(
             body
                 fontFamily: "sans-serif"
+            #idTest
+                width: "100px"
             .notice
                 width: "400px"
                 height: "300px"
@@ -21,6 +23,7 @@ fn test_simple() -> Result<(), failure::Error> {
         .to_string(),
         vec![
             "body {font-family: sans-serif;}",
+            "#idTest {width: 100px;}",
             ".notice .head {font-size: 4em;}",
             ".notice .content {font-size: 0.5em;line-height: 1.5em;}",
             ".notice {width: 400px;height: 300px;margin: auto;font-size: 2em;text-align: center;}",
