@@ -8,8 +8,15 @@ fn test_simple() -> Result<(), failure::Error> {
                 body
                     span.hello "HELLO!"
                     .hello {"Inner Text"}
-        ).to_string(),
-        "<html><body><span class=\"hello\">HELLO!</span><div class=\"hello\">Inner Text</div></body></html>".to_string()
+        )
+        .to_string(),
+        vec![
+            "<html><body>",
+            "<span class=\"hello\">HELLO!</span>",
+            "<div class=\"hello\">Inner Text</div>",
+            "</body></html>"
+        ]
+        .join("")
     );
     Ok(())
 }
@@ -24,8 +31,15 @@ fn test_text_node() -> Result<(), failure::Error> {
                         "HELLO!"
                         div "Hi"
                     .hello {"Inner Text"}
-        ).to_string(),
-        "<html><body><span class=\"hello\">HELLO!<div>Hi</div></span><div class=\"hello\">Inner Text</div></body></html>".to_string()
+        )
+        .to_string(),
+        vec![
+            "<html><body>",
+            "<span class=\"hello\">HELLO!<div>Hi</div></span>",
+            "<div class=\"hello\">Inner Text</div>",
+            "</body></html>"
+        ]
+        .join("")
     );
     Ok(())
 }
@@ -39,8 +53,17 @@ fn test_svg_node() -> Result<(), failure::Error> {
                     span.hello dataTest="test-data" "HELLO!"
                     svg version="1.1" viewBox="0 0 1 1"
                         path d=""
-        ).to_string(),
-        "<html><body><span class=\"hello\" data-test=\"test-data\">HELLO!</span><svg version=\"1.1\" viewBox=\"0 0 1 1\"><path d=\"\"></path></svg></body></html>".to_string()
+        )
+        .to_string(),
+        vec![
+            "<html><body>",
+            "<span class=\"hello\" data-test=\"test-data\">HELLO!</span>",
+            "<svg version=\"1.1\" viewBox=\"0 0 1 1\">",
+            "<path d=\"\"></path>",
+            "</svg>",
+            "</body></html>"
+        ]
+        .join("")
     );
     Ok(())
 }
