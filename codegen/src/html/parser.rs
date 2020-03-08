@@ -109,6 +109,10 @@ impl Line {
                     properties.push((name.to_string(), literal.to_string()));
                     state = State::HasIdent;
                 }
+                (State::NeedPropertyValue(name), Node::Group(ref group)) => {
+                    properties.push((name.to_string(), group.to_string()));
+                    state = State::HasIdent;
+                }
                 (State::HasIdent, Node::Literal(literal)) => {
                     // TODO: Implement more
                     contents.push(literal);

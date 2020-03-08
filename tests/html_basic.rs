@@ -45,6 +45,27 @@ fn test_text_node() -> Result<(), failure::Error> {
 }
 
 #[test]
+fn test_dynamic_params() -> Result<(), failure::Error> {
+    let dynamic_param = 32i32;
+    assert_eq!(
+        tent::html!(
+            html
+                body
+                    span class={dynamic_param.to_string()} data={"Inner data"}
+                        "HELLO!"
+        )
+        .to_string(),
+        vec![
+            "<html><body>",
+            "<span class=\"32\" data=\"Inner data\">HELLO!</span>",
+            "</body></html>",
+        ]
+        .join("")
+    );
+    Ok(())
+}
+
+#[test]
 fn test_svg_node() -> Result<(), failure::Error> {
     assert_eq!(
         tent::html!(
