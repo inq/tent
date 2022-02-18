@@ -59,7 +59,7 @@ impl Line {
             HasAccumulatedPunct(String),
             NeedDeclarationValue(String),
             Done,
-        };
+        }
         let mut state = State::StandBy;
         let mut res = None;
 

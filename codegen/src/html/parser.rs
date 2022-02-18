@@ -66,7 +66,7 @@ impl Line {
             NeedPropertyValue(String),
             NeedClassName,
             Done(BuilderNode),
-        };
+        }
         let mut state = State::StandBy;
         let mut tag = None;
         let mut contents = vec![];
