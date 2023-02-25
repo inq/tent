@@ -1,13 +1,13 @@
-#![feature(proc_macro_hygiene)]
-
 #[test]
 fn test_simple() -> Result<(), failure::Error> {
     assert_eq!(
         tent::html!(
+            r#"
             html
                 body
                     span.hello "HELLO!"
                     .hello {"Inner Text"}
+        "#
         )
         .to_string(),
         vec![
@@ -25,12 +25,14 @@ fn test_simple() -> Result<(), failure::Error> {
 fn test_text_node() -> Result<(), failure::Error> {
     assert_eq!(
         tent::html!(
+            r#"
             html
                 body
                     span.hello
                         "HELLO!"
                         div "Hi"
                     .hello {"Inner Text"}
+        "#
         )
         .to_string(),
         vec![
@@ -49,10 +51,12 @@ fn test_dynamic_params() -> Result<(), failure::Error> {
     let dynamic_param = 32i32;
     assert_eq!(
         tent::html!(
+            r#"
             html
                 body
                     span class={dynamic_param.to_string()} data={"Inner data"}
                         "HELLO!"
+        "#
         )
         .to_string(),
         vec![
@@ -69,11 +73,13 @@ fn test_dynamic_params() -> Result<(), failure::Error> {
 fn test_svg_node() -> Result<(), failure::Error> {
     assert_eq!(
         tent::html!(
+            r#"
             html
                 body
                     span.hello dataTest="test-data" "HELLO!"
                     svg version="1.1" viewBox="0 0 1 1"
                         path d=""
+        "#
         )
         .to_string(),
         vec![

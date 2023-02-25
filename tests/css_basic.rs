@@ -1,9 +1,8 @@
-#![feature(proc_macro_hygiene)]
-
 #[test]
 fn test_simple() -> Result<(), failure::Error> {
     assert_eq!(
         tent::css!(
+            r#"
             body
                 fontFamily: "sans-serif"
             #idTest
@@ -19,6 +18,7 @@ fn test_simple() -> Result<(), failure::Error> {
                 .content
                     fontSize: "0.5em"
                     lineHeight: "1.5em"
+        "#
         )
         .to_string(),
         vec![
@@ -37,9 +37,11 @@ fn test_simple() -> Result<(), failure::Error> {
 fn test_font() -> Result<(), failure::Error> {
     assert_eq!(
         tent::css!(
+            r#"
             @fontFace
                 fontFamily: "myfont"
                 src: "url('/assets/font.woff') format('woff')"
+        "#
         )
         .to_string(),
         vec![

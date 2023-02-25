@@ -1,5 +1,7 @@
+use std::str::FromStr;
+
 use crate::html::Content;
-use proc_macro::{token_stream, TokenTree};
+use proc_macro::{TokenStream, TokenTree};
 
 #[derive(Debug)]
 pub enum Node {
@@ -12,11 +14,17 @@ pub enum Node {
 #[derive(Default)]
 pub struct LineBuilder {
     level: Option<usize>,
-    column: Option<usize>,
     nodes: Vec<Node>,
 }
 
 impl LineBuilder {
+    fn new(level: usize) -> Self {
+        Self {
+            level: Some(level),
+            ..Default::default()
+        }
+    }
+
     // TODO: Replace Option with Result
     fn build(self) -> Option<Line> {
         Some(Line {
@@ -26,11 +34,6 @@ impl LineBuilder {
     }
 
     fn put(&mut self, token: TokenTree) {
-        let span = token.span();
-        if self.level.is_none() {
-            self.level = Some(span.start().column);
-        }
-
         let node = match token {
             TokenTree::Ident(ident) => Node::Ident(ident.to_string()),
             TokenTree::Punct(punct) => Node::Punct(punct.as_char()),
@@ -38,7 +41,6 @@ impl LineBuilder {
             TokenTree::Group(group) => Node::Group(group.to_string()),
         };
         self.nodes.push(node);
-        self.column = Some(span.end().column);
     }
 }
 
@@ -231,21 +233,20 @@ impl BuilderNode {
 }
 
 impl Parser {
-    pub fn from_tokens(tokens: token_stream::IntoIter) -> Option<Self> {
-        let mut current_line_num = None;
-        let mut lines = vec![];
-        let mut current_line = LineBuilder::default();
+    pub fn from_str(input: &str) -> Option<Self> {
+        let lines = input
+            .lines()
+            .map(|line| {
+                let mut tokens = TokenStream::from_str(line).unwrap().into_iter();
+                let mut line_builder =
+                    LineBuilder::new(line.find(|c: char| !c.is_whitespace()).unwrap_or_default());
+                while let Some(token) = tokens.next() {
+                    line_builder.put(token);
+                }
+                line_builder.build().unwrap()
+            })
+            .collect();
 
-        for token in tokens {
-            let span = token.span();
-            let start = span.start();
-            if current_line_num.map_or(false, |line_num| line_num != start.line) {
-                lines.push(std::mem::take(&mut current_line).build()?);
-            }
-            current_line_num = Some(start.line);
-            current_line.put(token);
-        }
-        lines.push(current_line.build()?);
         Some(Self { lines })
     }
 
@@ -272,6 +273,9 @@ impl Parser {
 
         let mut stack: Vec<BuilderNode> = vec![];
         for line in self.lines.into_iter() {
+            if line.nodes.is_empty() {
+                continue;
+            }
             let node = line.process()?;
 
             loop {
