@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies.tent_codegen]
 path = "./codegen"
-version = "0"
+version = "0.0.11"
 
 [workspace]
 members = [".", "codegen"]
